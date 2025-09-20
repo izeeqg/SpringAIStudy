@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpringAI 演示应用</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: white;
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        .tab:hover:not(.active) {
+            background: #e2e8f0;
+        }
+        
+        .tab-content {
+            padding: 30px;
+        }
+        
+        .tab-panel {
+            display: none;
+        }
+        
+        .tab-panel.active {
+            display: block;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+        
+        .input-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .result pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #dc2626;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border-left-color: #22c55e;
+            color: #16a34a;
+        }
+        
+        .api-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .api-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f1f5f9;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .api-link:hover {
+            background: #e2e8f0;
+            color: #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SpringAI 演示应用</h1>
+            <p>体验基于 Spring AI 的智能对话、RAG 检索和函数调用功能</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('chat')">智能对话</button>
+            <button class="tab" onclick="switchTab('streaming')">流式对话</button>
+            <button class="tab" onclick="switchTab('rag')">RAG 检索</button>
+            <button class="tab" onclick="switchTab('functions')">函数调用</button>
+        </div>
+        
+        <div class="tab-content">
+            <!-- 智能对话 -->
+            <div id="chat" class="tab-panel active">
+                <div class="input-group">
+                    <label for="chatPrompt">输入您的问题：</label>
+                    <textarea id="chatPrompt" placeholder="例如：介绍一下 Spring AI 框架的特点"></textarea>
+                </div>
+                <button class="btn" onclick="sendChatRequest()">发送对话</button>
+                <div id="chatResult"></div>
+            </div>
+
+            <!-- 流式对话 -->
+            <div id="streaming" class="tab-panel">
+                <div class="input-group">
+                    <label for="streamingPrompt">输入您的问题（流式响应）：</label>
+                    <textarea id="streamingPrompt" placeholder="例如：请详细介绍 Spring AI 的核心特性和使用场景"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn" onclick="startStreamingChat()">开始流式对话</button>
+                    <button class="btn" onclick="stopStreamingChat()" style="background: #dc2626;">停止对话</button>
+                    <button class="btn" onclick="clearStreamingResult()" style="background: #6b7280;">清空结果</button>
+                </div>
+                <div id="streamingStatus" style="margin-bottom: 10px; font-weight: bold; color: #4f46e5;"></div>
+                <div id="streamingResult"></div>
+            </div>
+            
+            <!-- RAG 检索 -->
+            <div id="rag" class="tab-panel">
+                <div class="input-group">
+                    <label for="ragDocument">添加文档内容：</label>
+                    <textarea id="ragDocument" placeholder="输入要添加到知识库的文档内容"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="ragTitle">文档标题（可选）：</label>
+                    <input type="text" id="ragTitle" placeholder="例如：Spring AI 使用指南">
+                </div>
+                <button class="btn" onclick="addDocument()">添加文档</button>
+                
+                <div class="input-group" style="margin-top: 30px;">
+                    <label for="ragQuery">RAG 问答：</label>
+                    <textarea id="ragQuery" placeholder="基于已添加的文档内容提问"></textarea>
+                </div>
+                <button class="btn" onclick="sendRagQuery()">RAG 问答</button>
+                <div id="ragResult"></div>
+            </div>
+            
+            <!-- 函数调用 -->
+            <div id="functions" class="tab-panel">
+                <div class="input-group">
+                    <label for="functionPrompt">输入需要调用函数的问题：</label>
+                    <textarea id="functionPrompt" placeholder="例如：现在几点了？帮我生成一个1到100的随机数，或者计算 25 + 17"></textarea>
+                </div>
+                <button class="btn" onclick="sendFunctionRequest()">发送请求</button>
+                <button class="btn" onclick="getAvailableFunctions()" style="margin-left: 10px; background: #6b7280;">查看可用函数</button>
+                <div id="functionResult"></div>
+            </div>
+        </div>
+        
+        <div class="api-links">
+            <a href="/swagger-ui.html" class="api-link" target="_blank">📚 API 文档</a>
+            <a href="/actuator/health" class="api-link" target="_blank">💚 健康检查</a>
+            <a href="/actuator/metrics" class="api-link" target="_blank">📊 系统指标</a>
+            <a href="/api/management/status" class="api-link" target="_blank">🔧 系统状态</a>
+        </div>
+    </div>
+
+    <script>
+        // 流式连接管理
+        let eventSource = null;
+        let currentConnectionId = null;
+
+        // 切换选项卡
+        function switchTab(tabName) {
+            // 移除所有活动状态
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            
+            // 激活选中的选项卡
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // 如果切换到非流式标签，停止流式连接
+            if (tabName !== 'streaming' && eventSource) {
+                stopStreamingChat();
+            }
+        }
+        
+        // 发送对话请求
+        async function sendChatRequest() {
+            const prompt = document.getElementById('chatPrompt').value.trim();
+            if (!prompt) {
+                alert('请输入问题');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('chatResult');
+            resultDiv.innerHTML = '<div class="loading">正在思考中...</div>';
+            
+            try {
+                const response = await fetch('/api/chat/completion', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `prompt=${encodeURIComponent(prompt)}`
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<div class="result success"><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 添加文档
+        async function addDocument() {
+            const content = document.getElementById('ragDocument').value.trim();
+            const title = document.getElementById('ragTitle').value.trim();
+            
+            if (!content) {
+                alert('请输入文档内容');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams();
+                params.append('content', content);
+                if (title) params.append('title', title);
+                
+                const response = await fetch('/api/rag/documents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: params
+                });
+                
+                const data = await response.json();
+                alert(data.success ? '文档添加成功' : '文档添加失败: ' + data.error);
+                
+                // 清空输入框
+                if (data.success) {
+                    document.getElementById('ragDocument').value = '';
+                    document.getElementById('ragTitle').value = '';
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+        
+        // 发送RAG查询
+        async function sendRagQuery() {
+            const question = document.getElementById('ragQuery').value.trim();
+            if (!question) {
+                alert('请输入问题');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('ragResult');
+            resultDiv.innerHTML = '<div class="loading">正在检索和生成答案...</div>';
+            
+            try {
+                const response = await fetch('/api/rag/query', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `question=${encodeURIComponent(question)}`
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<div class="result success"><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 发送函数调用请求
+        async function sendFunctionRequest() {
+            const message = document.getElementById('functionPrompt').value.trim();
+            if (!message) {
+                alert('请输入问题');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('functionResult');
+            resultDiv.innerHTML = '<div class="loading">正在处理函数调用...</div>';
+            
+            try {
+                const response = await fetch('/api/functions/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `message=${encodeURIComponent(message)}`
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<div class="result success"><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">请求失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 获取可用函数列表
+        async function getAvailableFunctions() {
+            const resultDiv = document.getElementById('functionResult');
+            resultDiv.innerHTML = '<div class="loading">获取函数列表...</div>';
+            
+            try {
+                const response = await fetch('/api/functions/available');
+                const data = await response.json();
+                resultDiv.innerHTML = `<div class="result success"><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">请求失败: ${error.message}</div>`;
+            }
+        }
+
+        // 流式对话功能
+        function startStreamingChat() {
+            const prompt = document.getElementById('streamingPrompt').value.trim();
+            if (!prompt) {
+                alert('请输入问题');
+                return;
+            }
+
+            // 停止现有连接
+            if (eventSource) {
+                stopStreamingChat();
+            }
+
+            const statusDiv = document.getElementById('streamingStatus');
+            const resultDiv = document.getElementById('streamingResult');
+            
+            statusDiv.innerHTML = '🔄 正在建立连接...';
+            resultDiv.innerHTML = '<div class="result"><div class="streaming-content"></div></div>';
+            
+            // 生成连接ID
+            currentConnectionId = 'conn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // 建立SSE连接
+            const url = `/api/streaming/chat?prompt=${encodeURIComponent(prompt)}&connectionId=${currentConnectionId}`;
+            eventSource = new EventSource(url);
+            
+            const contentDiv = resultDiv.querySelector('.streaming-content');
+            let fullContent = '';
+            
+            eventSource.onopen = function() {
+                statusDiv.innerHTML = '✅ 连接已建立，正在处理...';
+            };
+            
+            eventSource.addEventListener('start', function(event) {
+                const data = JSON.parse(event.data);
+                statusDiv.innerHTML = '🚀 开始生成回复...';
+                contentDiv.innerHTML = '<div style="color: #6b7280; margin-bottom: 10px;">开始时间: ' + new Date(data.timestamp).toLocaleTimeString() + '</div>';
+            });
+            
+            eventSource.addEventListener('chunk', function(event) {
+                const data = JSON.parse(event.data);
+                fullContent += data.content + ' ';
+                
+                // 实时更新内容
+                contentDiv.innerHTML = `
+                    <div style="color: #6b7280; font-size: 0.9em; margin-bottom: 10px;">
+                        正在生成... (chunk ${data.index + 1})
+                    </div>
+                    <div style="line-height: 1.6; white-space: pre-wrap;">${fullContent}</div>
+                `;
+                
+                // 自动滚动到底部
+                contentDiv.scrollTop = contentDiv.scrollHeight;
+            });
+            
+            eventSource.addEventListener('complete', function(event) {
+                const data = JSON.parse(event.data);
+                statusDiv.innerHTML = '✅ 对话完成';
+                
+                contentDiv.innerHTML = `
+                    <div style="color: #16a34a; font-size: 0.9em; margin-bottom: 10px;">
+                        ✅ 完成时间: ${new Date(data.timestamp).toLocaleTimeString()}
+                    </div>
+                    <div style="line-height: 1.6; white-space: pre-wrap;">${data.fullResponse}</div>
+                `;
+                
+                eventSource.close();
+                eventSource = null;
+                currentConnectionId = null;
+            });
+            
+            eventSource.addEventListener('error', function(event) {
+                const data = JSON.parse(event.data);
+                statusDiv.innerHTML = '❌ 处理出错';
+                contentDiv.innerHTML = `<div style="color: #dc2626;">错误: ${data.error}</div>`;
+                
+                eventSource.close();
+                eventSource = null;
+                currentConnectionId = null;
+            });
+            
+            eventSource.onerror = function(event) {
+                statusDiv.innerHTML = '❌ 连接错误';
+                contentDiv.innerHTML = '<div style="color: #dc2626;">连接失败，请检查网络或稍后重试</div>';
+                
+                eventSource.close();
+                eventSource = null;
+                currentConnectionId = null;
+            };
+        }
+        
+        function stopStreamingChat() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                currentConnectionId = null;
+                
+                const statusDiv = document.getElementById('streamingStatus');
+                statusDiv.innerHTML = '⏹️ 连接已停止';
+            }
+        }
+        
+        function clearStreamingResult() {
+            const resultDiv = document.getElementById('streamingResult');
+            const statusDiv = document.getElementById('streamingStatus');
+            
+            resultDiv.innerHTML = '';
+            statusDiv.innerHTML = '';
+            
+            // 清空输入框
+            document.getElementById('streamingPrompt').value = '';
+        }
+
+        // 页面关闭时清理连接
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>
